@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import Papa from "papaparse";
+import { parseCsvFile, exportCsvData } from "./utils";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Download, Filter } from "lucide-react";
 
 export const CsvViewer = ({ file }: { file: File }) => {
@@ -18,32 +18,17 @@ export const CsvViewer = ({ file }: { file: File }) => {
   const itemsPerPage = 50;
 
   useEffect(() => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const text = reader.result as string;
-        const parsed = Papa.parse(text, { 
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-          transformHeader: (header) => header.trim()
-        });
-        
-        if (parsed.errors.length > 0) {
-          setError("Error parsing CSV file");
-          return;
-        }
-
-        setData(parsed.data);
-        setFilteredData(parsed.data);
-        setColumns(parsed.meta.fields || []);
+    parseCsvFile(file)
+      .then(({ data, columns }) => {
+        setData(data);
+        setFilteredData(data);
+        setColumns(columns);
         setLoading(false);
-      } catch (err) {
-        setError("Failed to load CSV file");
+      })
+      .catch((err) => {
+        setError(typeof err === "string" ? err : "Failed to load CSV file");
         setLoading(false);
-      }
-    };
-    reader.readAsText(file);
+      });
   }, [file]);
 
   useEffect(() => {
@@ -93,12 +78,7 @@ export const CsvViewer = ({ file }: { file: File }) => {
   };
 
   const exportData = () => {
-    const csv = Papa.unparse(filteredData);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `filtered_${file.name}`;
-    link.click();
+    exportCsvData(filteredData, `filtered_${file.name}`);
   };
 
   if (loading) {

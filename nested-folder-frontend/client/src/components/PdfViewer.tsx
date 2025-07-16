@@ -1,4 +1,5 @@
 import  { useEffect, useState } from "react";
+import { downloadFileURL } from "./utils";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Download, FileText } from "lucide-react";
 
@@ -57,10 +58,7 @@ const PdfViewer = ({ file }: { file: File }) => {
   };
 
   const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = fileURL;
-    link.download = file.name;
-    link.click();
+    downloadFileURL(fileURL, file.name);
   };
 
   if (!fileURL) {

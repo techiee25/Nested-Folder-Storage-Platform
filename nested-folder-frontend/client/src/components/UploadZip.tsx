@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import JSZip from "jszip";
+import { isZipFile, parseZipFile } from "./utils";
 import { Upload, FileText, Database, AlertCircle, CheckCircle } from "lucide-react";
 
 interface FileItem {
@@ -19,6 +19,7 @@ interface FolderItem {
   modifiedBy: string;
 }
 
+
 interface UploadZipProps {
   onStructureReady: (structure: FolderItem) => void;
 }
@@ -28,28 +29,9 @@ const UploadZip: React.FC<UploadZipProps> = ({ onStructureReady }) => {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [dragActive, setDragActive] = useState(false);
 
-  // Helper function to check if file is a ZIP
-  const isZipFile = (file: File): boolean => {
-    // Check file extension
-    const fileName = file.name.toLowerCase();
-    const hasZipExtension = fileName.endsWith('.zip');
-    
-    // Check MIME type (ZIP files can have different MIME types)
-    const validMimeTypes = [
-      'application/zip',
-      'application/x-zip-compressed',
-      'application/x-zip',
-      'multipart/x-zip'
-    ];
-    const hasValidMimeType = validMimeTypes.includes(file.type) || file.type === '';
-    
-    return hasZipExtension && (hasValidMimeType || file.type === '');
-  };
-
   const handleZipUpload = async (file: File) => {
     if (!isZipFile(file)) {
       setUploadStatus("error");
-      console.error("Invalid file type. Please upload a ZIP file.");
       return;
     }
 
@@ -57,58 +39,8 @@ const UploadZip: React.FC<UploadZipProps> = ({ onStructureReady }) => {
     setUploadStatus("idle");
 
     try {
-      const zip = await JSZip.loadAsync(file);
-      const rootFolder: FolderItem = {
-        name: file.name.replace(/\.zip$/, ""),
-        type: "folder",
-        children: [],
-        createdAt: new Date().toISOString(),
-        modifiedBy: "You",
-      };
-
-      const folderMap = new Map<string, FolderItem>();
-      folderMap.set("", rootFolder);
-
-      for (const relativePath in zip.files) {
-        const entry = zip.files[relativePath];
-        const parts = relativePath.split("/").filter(Boolean);
-        const name = parts[parts.length - 1];
-        const parentPath = parts.slice(0, -1).join("/");
-
-        const parentFolder = folderMap.get(parentPath);
-        if (!parentFolder) continue;
-
-        if (entry.dir) {
-          const newFolder: FolderItem = {
-            name,
-            type: "folder",
-            children: [],
-            createdAt: new Date().toISOString(),
-            modifiedBy: "You",
-          };
-          parentFolder.children.push(newFolder);
-          folderMap.set(parts.join("/"), newFolder);
-        } else {
-          const ext = name.split(".").pop()?.toLowerCase();
-          if (ext === "csv" || ext === "pdf") {
-            const fileBlob = await entry.async("blob");
-            const fileObj = new File([fileBlob], name, { type: fileBlob.type });
-
-            const fileItem: FileItem = {
-              name,
-              type: "file",
-              fileType: ext as "csv" | "pdf",
-              file: fileObj,
-              createdAt: new Date().toISOString(),
-              modifiedBy: "You",
-            };
-
-            parentFolder.children.push(fileItem);
-          }
-        }
-      }
-
-      onStructureReady(rootFolder);
+      const rootFolder = await parseZipFile(file, "You");
+      onStructureReady(rootFolder as FolderItem);
       setUploadStatus("success");
     } catch (error) {
       setUploadStatus("error");

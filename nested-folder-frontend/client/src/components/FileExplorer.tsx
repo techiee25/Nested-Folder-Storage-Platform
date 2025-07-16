@@ -1,43 +1,21 @@
 import  { useState } from "react";
 import FileNode from "./FileNode";
 import { Search, SortAsc, FolderOpen, RotateCcw } from "lucide-react";
+import { getFileCount, filterAndSortTree } from "./utils";
 
 const FileExplorer = ({ tree, onFileClick }: any) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "createdAt">("name");
 
-  const filterAndSort = (node: any): any[] => {
-    if (node.type === "file") {
-      return node.name.toLowerCase().includes(searchQuery.toLowerCase()) ? [node] : [];
-    }
+  // filterAndSortTree imported from utils.ts
 
-    let filteredChildren = node.children.flatMap(filterAndSort);
-    const folders = filteredChildren.filter((child: any) => child.type === "folder");
-    const files = filteredChildren.filter((child: any) => child.type === "file");
-
-    const compareFn = (a: any, b: any) =>
-      sortBy === "name"
-        ? a.name.localeCompare(b.name)
-        : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-
-    folders.sort(compareFn);
-    files.sort(compareFn);
-
-    const sortedChildren = [...folders, ...files];
-
-    return sortedChildren.length > 0 ? [{ ...node, children: sortedChildren }] : [];
-  };
-
-  const filteredTree = searchQuery ? filterAndSort(tree)[0] : tree;
+  const filteredTree = searchQuery ? filterAndSortTree(tree, searchQuery, sortBy)[0] : tree;
 
   const clearSearch = () => {
     setSearchQuery("");
   };
 
-  const getFileCount = (node: any): number => {
-    if (node.type === "file") return 1;
-    return node.children.reduce((count: number, child: any) => count + getFileCount(child), 0);
-  };
+  // getFileCount imported from utils.ts
 
   const totalFiles = getFileCount(tree);
   const filteredFiles = filteredTree ? getFileCount(filteredTree) : 0;
