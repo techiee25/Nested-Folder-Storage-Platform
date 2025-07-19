@@ -65,13 +65,15 @@ export const isZipFile = (file: File): boolean => {
 // ZIP parsing helper (returns folder structure)
 export const parseZipFile = async (file: File, modifiedBy = "You") => {
   const zip = await JSZip.loadAsync(file);
+
   const rootFolder = {
     name: file.name.replace(/\.zip$/, ""),
     type: "folder",
     children: [],
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(file.lastModified).toISOString(), // Use file's last modified date
     modifiedBy,
   };
+
   const folderMap = new Map<string, any>();
   folderMap.set("", rootFolder);
 
@@ -84,12 +86,14 @@ export const parseZipFile = async (file: File, modifiedBy = "You") => {
     const parentFolder = folderMap.get(parentPath);
     if (!parentFolder) continue;
 
+    const createdAt = entry.date?.toISOString?.() || new Date().toISOString(); // Safe fallback
+
     if (entry.dir) {
       const newFolder = {
         name,
         type: "folder",
         children: [],
-        createdAt: new Date().toISOString(),
+        createdAt,
         modifiedBy,
       };
       parentFolder.children.push(newFolder);
@@ -104,13 +108,14 @@ export const parseZipFile = async (file: File, modifiedBy = "You") => {
           type: "file",
           fileType: ext,
           file: fileObj,
-          createdAt: new Date().toISOString(),
+          createdAt,
           modifiedBy,
         };
         parentFolder.children.push(fileItem);
       }
     }
   }
+
   return rootFolder;
 };
 
